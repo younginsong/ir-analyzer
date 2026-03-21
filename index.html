@@ -1,0 +1,823 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>IR Analyzer — FTIR Deconvolution Tool</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=Instrument+Serif:ital@0;1&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg:        #0d0d14;
+    --bg2:       #13131e;
+    --bg3:       #1a1a2e;
+    --border:    rgba(255,255,255,0.07);
+    --text:      #e8e8f0;
+    --muted:     #6b6b88;
+    --accent:    #89b4fa;
+    --accent2:   #a6e3a1;
+    --accent3:   #cba6f7;
+    --red:       #f38ba8;
+    --peach:     #fab387;
+  }
+
+  html { scroll-behavior: smooth; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 16px;
+    line-height: 1.6;
+    overflow-x: hidden;
+  }
+
+  /* ── 노이즈 텍스처 오버레이 ── */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E");
+    pointer-events: none;
+    z-index: 0;
+    opacity: 0.4;
+  }
+
+  /* ── NAV ── */
+  nav {
+    position: fixed;
+    top: 0; left: 0; right: 0;
+    z-index: 100;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 18px 48px;
+    background: rgba(13,13,20,0.85);
+    backdrop-filter: blur(20px);
+    border-bottom: 1px solid var(--border);
+  }
+
+  .nav-logo {
+    font-family: 'DM Mono', monospace;
+    font-size: 15px;
+    letter-spacing: 0.08em;
+    color: var(--accent);
+    text-decoration: none;
+  }
+
+  .nav-links {
+    display: flex;
+    gap: 32px;
+    list-style: none;
+  }
+
+  .nav-links a {
+    color: var(--muted);
+    text-decoration: none;
+    font-size: 14px;
+    font-weight: 500;
+    letter-spacing: 0.02em;
+    transition: color 0.2s;
+  }
+  .nav-links a:hover { color: var(--text); }
+
+  .nav-cta {
+    background: var(--accent);
+    color: #0d0d14 !important;
+    padding: 8px 20px;
+    border-radius: 6px;
+    font-weight: 600 !important;
+    transition: background 0.2s !important;
+  }
+  .nav-cta:hover { background: #b4d0ff !important; color: #0d0d14 !important; }
+
+  /* ── HERO ── */
+  .hero {
+    position: relative;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 120px 24px 80px;
+    text-align: center;
+    overflow: hidden;
+  }
+
+  /* 배경 글로우 */
+  .hero::after {
+    content: '';
+    position: absolute;
+    width: 800px; height: 800px;
+    background: radial-gradient(ellipse, rgba(137,180,250,0.06) 0%, transparent 70%);
+    top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    pointer-events: none;
+  }
+
+  .hero-eyebrow {
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 24px;
+    opacity: 0;
+    animation: fadeUp 0.8s ease forwards 0.2s;
+  }
+
+  .hero-title {
+    font-family: 'Instrument Serif', serif;
+    font-size: clamp(52px, 8vw, 96px);
+    line-height: 1.02;
+    letter-spacing: -0.02em;
+    margin-bottom: 8px;
+    opacity: 0;
+    animation: fadeUp 0.8s ease forwards 0.35s;
+  }
+
+  .hero-title em {
+    font-style: italic;
+    color: var(--accent);
+  }
+
+  .hero-subtitle-line {
+    font-family: 'Instrument Serif', serif;
+    font-size: clamp(28px, 4vw, 48px);
+    color: var(--muted);
+    font-style: italic;
+    margin-bottom: 32px;
+    opacity: 0;
+    animation: fadeUp 0.8s ease forwards 0.45s;
+  }
+
+  .hero-desc {
+    max-width: 520px;
+    font-size: 17px;
+    color: var(--muted);
+    line-height: 1.7;
+    margin-bottom: 48px;
+    opacity: 0;
+    animation: fadeUp 0.8s ease forwards 0.55s;
+  }
+
+  .hero-buttons {
+    display: flex;
+    gap: 14px;
+    flex-wrap: wrap;
+    justify-content: center;
+    opacity: 0;
+    animation: fadeUp 0.8s ease forwards 0.65s;
+  }
+
+  .btn-primary {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    background: var(--accent);
+    color: #0d0d14;
+    font-family: 'DM Sans', sans-serif;
+    font-weight: 600;
+    font-size: 15px;
+    padding: 14px 28px;
+    border-radius: 8px;
+    text-decoration: none;
+    transition: all 0.2s;
+    border: none;
+    cursor: pointer;
+  }
+  .btn-primary:hover {
+    background: #b4d0ff;
+    transform: translateY(-1px);
+    box-shadow: 0 8px 32px rgba(137,180,250,0.25);
+  }
+
+  .btn-secondary {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    background: transparent;
+    color: var(--text);
+    font-family: 'DM Sans', sans-serif;
+    font-weight: 500;
+    font-size: 15px;
+    padding: 14px 28px;
+    border-radius: 8px;
+    text-decoration: none;
+    border: 1px solid var(--border);
+    transition: all 0.2s;
+    cursor: pointer;
+  }
+  .btn-secondary:hover {
+    border-color: rgba(255,255,255,0.2);
+    background: rgba(255,255,255,0.04);
+    transform: translateY(-1px);
+  }
+
+  /* OS 뱃지 */
+  .os-badges {
+    display: flex;
+    gap: 12px;
+    justify-content: center;
+    margin-top: 20px;
+    opacity: 0;
+    animation: fadeUp 0.8s ease forwards 0.75s;
+  }
+
+  .os-badge {
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    color: var(--muted);
+    letter-spacing: 0.05em;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+  }
+
+  /* ── 스크린샷 ── */
+  .screenshot-wrapper {
+    position: relative;
+    margin: 80px auto 0;
+    max-width: 960px;
+    width: 90%;
+    opacity: 0;
+    animation: fadeUp 1s ease forwards 0.9s;
+  }
+
+  .screenshot-glow {
+    position: absolute;
+    inset: -40px;
+    background: radial-gradient(ellipse at center, rgba(137,180,250,0.08) 0%, transparent 70%);
+    pointer-events: none;
+  }
+
+  .screenshot-frame {
+    border-radius: 12px;
+    overflow: hidden;
+    border: 1px solid var(--border);
+    box-shadow:
+      0 0 0 1px rgba(137,180,250,0.1),
+      0 40px 80px rgba(0,0,0,0.6),
+      0 80px 160px rgba(0,0,0,0.4);
+  }
+
+  .screenshot-frame img {
+    width: 100%;
+    display: block;
+  }
+
+  /* ── STATS ── */
+  .stats {
+    display: flex;
+    justify-content: center;
+    gap: 0;
+    max-width: 700px;
+    margin: 80px auto;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    overflow: hidden;
+  }
+
+  .stat {
+    flex: 1;
+    padding: 32px 24px;
+    text-align: center;
+    border-right: 1px solid var(--border);
+    background: var(--bg2);
+  }
+  .stat:last-child { border-right: none; }
+
+  .stat-num {
+    font-family: 'Instrument Serif', serif;
+    font-size: 40px;
+    color: var(--accent);
+    display: block;
+    line-height: 1;
+    margin-bottom: 6px;
+  }
+
+  .stat-label {
+    font-size: 13px;
+    color: var(--muted);
+    font-family: 'DM Mono', monospace;
+    letter-spacing: 0.05em;
+  }
+
+  /* ── FEATURES ── */
+  .section {
+    padding: 100px 24px;
+    max-width: 1100px;
+    margin: 0 auto;
+  }
+
+  .section-label {
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 16px;
+  }
+
+  .section-title {
+    font-family: 'Instrument Serif', serif;
+    font-size: clamp(36px, 5vw, 56px);
+    line-height: 1.1;
+    margin-bottom: 60px;
+    max-width: 600px;
+  }
+
+  .section-title em { font-style: italic; color: var(--accent); }
+
+  .features-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 1px;
+    background: var(--border);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    overflow: hidden;
+  }
+
+  .feature-card {
+    background: var(--bg2);
+    padding: 36px 32px;
+    transition: background 0.2s;
+  }
+  .feature-card:hover { background: var(--bg3); }
+
+  .feature-icon {
+    font-size: 28px;
+    margin-bottom: 16px;
+    display: block;
+  }
+
+  .feature-title {
+    font-size: 17px;
+    font-weight: 600;
+    margin-bottom: 10px;
+    color: var(--text);
+  }
+
+  .feature-desc {
+    font-size: 14px;
+    color: var(--muted);
+    line-height: 1.65;
+  }
+
+  .feature-tag {
+    display: inline-block;
+    margin-top: 14px;
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    padding: 3px 8px;
+    border-radius: 4px;
+    background: rgba(137,180,250,0.1);
+    color: var(--accent);
+  }
+
+  /* ── WORKFLOW ── */
+  .workflow-section {
+    padding: 100px 24px;
+    background: var(--bg2);
+    border-top: 1px solid var(--border);
+    border-bottom: 1px solid var(--border);
+  }
+
+  .workflow-inner {
+    max-width: 1100px;
+    margin: 0 auto;
+  }
+
+  .workflow-steps {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 0;
+    margin-top: 60px;
+    position: relative;
+  }
+
+  .workflow-step {
+    padding: 32px 24px;
+    position: relative;
+    text-align: center;
+  }
+
+  .step-num {
+    font-family: 'Instrument Serif', serif;
+    font-size: 64px;
+    color: rgba(137,180,250,0.12);
+    line-height: 1;
+    margin-bottom: 12px;
+  }
+
+  .step-title {
+    font-size: 16px;
+    font-weight: 600;
+    margin-bottom: 8px;
+  }
+
+  .step-desc {
+    font-size: 13px;
+    color: var(--muted);
+    line-height: 1.6;
+  }
+
+  .step-arrow {
+    position: absolute;
+    right: -12px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--muted);
+    font-size: 20px;
+    z-index: 1;
+  }
+
+  /* ── DOWNLOAD ── */
+  .download-section {
+    padding: 100px 24px;
+    text-align: center;
+  }
+
+  .download-cards {
+    display: flex;
+    gap: 20px;
+    justify-content: center;
+    flex-wrap: wrap;
+    margin-top: 48px;
+  }
+
+  .download-card {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 36px 40px;
+    min-width: 240px;
+    transition: all 0.25s;
+    text-decoration: none;
+    color: var(--text);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 14px;
+  }
+  .download-card:hover {
+    border-color: rgba(137,180,250,0.3);
+    background: var(--bg3);
+    transform: translateY(-4px);
+    box-shadow: 0 20px 60px rgba(0,0,0,0.4);
+  }
+
+  .download-os-icon { font-size: 40px; }
+
+  .download-os-name {
+    font-size: 18px;
+    font-weight: 600;
+  }
+
+  .download-version {
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    color: var(--muted);
+  }
+
+  .download-btn-label {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: var(--accent);
+    color: #0d0d14;
+    font-weight: 600;
+    font-size: 13px;
+    padding: 9px 20px;
+    border-radius: 6px;
+    margin-top: 4px;
+  }
+
+  .coming-soon {
+    opacity: 0.4;
+    pointer-events: none;
+  }
+  .coming-soon .download-btn-label {
+    background: var(--muted);
+    color: var(--bg);
+  }
+
+  /* ── FOOTER ── */
+  footer {
+    border-top: 1px solid var(--border);
+    padding: 40px 48px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: gap;
+  }
+
+  .footer-logo {
+    font-family: 'DM Mono', monospace;
+    font-size: 13px;
+    color: var(--accent);
+  }
+
+  .footer-links {
+    display: flex;
+    gap: 24px;
+    list-style: none;
+  }
+
+  .footer-links a {
+    color: var(--muted);
+    text-decoration: none;
+    font-size: 13px;
+    transition: color 0.2s;
+  }
+  .footer-links a:hover { color: var(--text); }
+
+  .footer-copy {
+    font-size: 12px;
+    color: var(--muted);
+    font-family: 'DM Mono', monospace;
+  }
+
+  /* ── 코드 블록 스타일 ── */
+  .code-block {
+    background: #0a0a12;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 20px 24px;
+    font-family: 'DM Mono', monospace;
+    font-size: 13px;
+    color: var(--accent2);
+    text-align: left;
+    margin-top: 32px;
+    max-width: 480px;
+    margin-left: auto;
+    margin-right: auto;
+  }
+
+  .code-comment { color: var(--muted); }
+
+  /* ── ANIMATIONS ── */
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(24px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  /* ── RESPONSIVE ── */
+  @media (max-width: 768px) {
+    nav { padding: 16px 24px; }
+    .nav-links { display: none; }
+    .stats { flex-direction: column; }
+    .stat { border-right: none; border-bottom: 1px solid var(--border); }
+    footer { flex-direction: column; gap: 20px; text-align: center; }
+    .step-arrow { display: none; }
+  }
+</style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav>
+  <a href="#" class="nav-logo">IR_ANALYZER</a>
+  <ul class="nav-links">
+    <li><a href="#features">Features</a></li>
+    <li><a href="#workflow">How it works</a></li>
+    <li><a href="#download">Download</a></li>
+    <li><a href="https://github.com" target="_blank">GitHub</a></li>
+    <li><a href="#download" class="nav-cta">↓ Download</a></li>
+  </ul>
+</nav>
+
+<!-- HERO -->
+<section class="hero">
+  <p class="hero-eyebrow">Open-source · Free forever · No Python required</p>
+  <h1 class="hero-title">FTIR Peak<br><em>Deconvolution</em></h1>
+  <p class="hero-subtitle-line">made simple.</p>
+  <p class="hero-desc">
+    Baseline correction, automatic peak detection, and multi-peak fitting
+    for in situ IR spectra — all in one elegant desktop app.
+  </p>
+
+  <div class="hero-buttons">
+    <a href="#download" class="btn-primary">
+      ↓ &nbsp;Download for Mac
+    </a>
+    <a href="https://github.com" class="btn-secondary" target="_blank">
+      ★ &nbsp;View on GitHub
+    </a>
+  </div>
+
+  <div class="os-badges">
+    <span class="os-badge">🍎 macOS 12+</span>
+    <span class="os-badge">·</span>
+    <span class="os-badge">🪟 Windows 10+ <span style="color:#45475a">(coming soon)</span></span>
+    <span class="os-badge">·</span>
+    <span class="os-badge">🐧 Linux <span style="color:#45475a">(coming soon)</span></span>
+  </div>
+
+  <!-- 스크린샷 -->
+  <div class="screenshot-wrapper">
+    <div class="screenshot-glow"></div>
+    <div class="screenshot-frame">
+      <img src="screenshot.png" alt="IR Analyzer screenshot showing 4-peak deconvolution of OH stretching region">
+    </div>
+  </div>
+</section>
+
+<!-- STATS -->
+<div style="max-width:700px;margin:0 auto;padding:0 24px;">
+  <div class="stats">
+    <div class="stat">
+      <span class="stat-num">4</span>
+      <span class="stat-label">Peak shapes</span>
+    </div>
+    <div class="stat">
+      <span class="stat-num">R²</span>
+      <span class="stat-label">Live fit quality</span>
+    </div>
+    <div class="stat">
+      <span class="stat-num">∞</span>
+      <span class="stat-label">Batch files</span>
+    </div>
+    <div class="stat">
+      <span class="stat-num">0</span>
+      <span class="stat-label">Setup required</span>
+    </div>
+  </div>
+</div>
+
+<!-- FEATURES -->
+<section class="section" id="features">
+  <p class="section-label">Features</p>
+  <h2 class="section-title">Everything you need,<br><em>nothing you don't.</em></h2>
+
+  <div class="features-grid">
+    <div class="feature-card">
+      <span class="feature-icon">🎯</span>
+      <div class="feature-title">Auto Peak Detection</div>
+      <div class="feature-desc">
+        Second-derivative analysis automatically finds hidden peaks in broad,
+        overlapping OH stretching bands — even when they're not visible to the eye.
+      </div>
+      <span class="feature-tag">2nd derivative</span>
+    </div>
+
+    <div class="feature-card">
+      <span class="feature-icon">🖱️</span>
+      <div class="feature-title">Interactive Peak Editing</div>
+      <div class="feature-desc">
+        Click on the plot to add peaks. Drag vertical markers to adjust center position.
+        Right-click to fine-tune FWHM. No command line, no scripting.
+      </div>
+      <span class="feature-tag">drag & drop</span>
+    </div>
+
+    <div class="feature-card">
+      <span class="feature-icon">📐</span>
+      <div class="feature-title">Gaussian · Lorentzian · Voigt</div>
+      <div class="feature-desc">
+        Choose your peak shape per experiment. lmfit-powered optimization
+        with full error estimation for each fitted parameter.
+      </div>
+      <span class="feature-tag">lmfit engine</span>
+    </div>
+
+    <div class="feature-card">
+      <span class="feature-icon">⚡</span>
+      <div class="feature-title">Stark Tuning Analysis</div>
+      <div class="feature-desc">
+        Load in situ potential-dependent spectra and instantly get
+        linear regression slopes (cm⁻¹/V) and R² for each peak — P1 through P4.
+      </div>
+      <span class="feature-tag">linear regression</span>
+    </div>
+
+    <div class="feature-card">
+      <span class="feature-icon">📂</span>
+      <div class="feature-title">Batch Processing</div>
+      <div class="feature-desc">
+        Drag a whole folder of CSV files onto the sidebar. One-click batch fitting
+        with shared initial parameters. Export all results to Excel in seconds.
+      </div>
+      <span class="feature-tag">xlsx export</span>
+    </div>
+
+    <div class="feature-card">
+      <span class="feature-icon">🎨</span>
+      <div class="feature-title">Dark-first Interface</div>
+      <div class="feature-desc">
+        Designed for long analysis sessions. Multi-spectrum sidebar, live
+        residual display, and color-coded peaks that are actually readable.
+      </div>
+      <span class="feature-tag">pyqtgraph</span>
+    </div>
+  </div>
+</section>
+
+<!-- WORKFLOW -->
+<div class="workflow-section" id="workflow">
+  <div class="workflow-inner">
+    <p class="section-label">Workflow</p>
+    <h2 class="section-title">From raw data<br><em>to publication</em><br>in minutes.</h2>
+
+    <div class="workflow-steps">
+      <div class="workflow-step">
+        <div class="step-num">01</div>
+        <div class="step-title">Load spectra</div>
+        <div class="step-desc">Drag CSV files onto the sidebar. Multiple spectra load instantly.</div>
+        <span class="step-arrow">→</span>
+      </div>
+      <div class="workflow-step">
+        <div class="step-num">02</div>
+        <div class="step-title">Set baseline</div>
+        <div class="step-desc">Auto rubber-band correction or click-to-place manual points.</div>
+        <span class="step-arrow">→</span>
+      </div>
+      <div class="workflow-step">
+        <div class="step-num">03</div>
+        <div class="step-title">Detect peaks</div>
+        <div class="step-desc">One click auto-detects 4 peaks. Drag to fine-tune positions.</div>
+        <span class="step-arrow">→</span>
+      </div>
+      <div class="workflow-step">
+        <div class="step-num">04</div>
+        <div class="step-title">Fit & export</div>
+        <div class="step-desc">Run Fit → R², areas, FWHM, Stark slopes → Excel in one click.</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- DOWNLOAD -->
+<section class="download-section" id="download">
+  <p class="section-label">Download</p>
+  <h2 class="section-title" style="margin:0 auto 16px;text-align:center;max-width:500px;">
+    Just download<br><em>and double-click.</em>
+  </h2>
+  <p style="color:var(--muted);font-size:15px;">No Python. No terminal. No setup.</p>
+
+  <div class="download-cards">
+    <a href="#" class="download-card">
+      <span class="download-os-icon">🍎</span>
+      <span class="download-os-name">macOS</span>
+      <span class="download-version">v0.1.0 · Apple Silicon & Intel</span>
+      <span class="download-btn-label">↓ &nbsp;Download .dmg</span>
+    </a>
+
+    <a href="#" class="download-card coming-soon">
+      <span class="download-os-icon">🪟</span>
+      <span class="download-os-name">Windows</span>
+      <span class="download-version">Coming soon</span>
+      <span class="download-btn-label">↓ &nbsp;Download .exe</span>
+    </a>
+  </div>
+
+  <div class="code-block">
+    <span class="code-comment"># 또는 Python 사용자라면</span><br>
+    git clone https://github.com/your-id/ir-analyzer<br>
+    cd ir-analyzer<br>
+    pip install -r requirements.txt<br>
+    python main.py
+  </div>
+
+  <p style="margin-top:24px;font-size:13px;color:var(--muted);">
+    MIT License · Free for academic and commercial use
+  </p>
+</section>
+
+<!-- FOOTER -->
+<footer>
+  <span class="footer-logo">IR_ANALYZER</span>
+  <ul class="footer-links">
+    <li><a href="https://github.com" target="_blank">GitHub</a></li>
+    <li><a href="#">Docs</a></li>
+    <li><a href="#">Issues</a></li>
+  </ul>
+  <span class="footer-copy">© 2025 · MIT License</span>
+</footer>
+
+<script>
+  // 스크롤 시 요소 페이드인
+  const observer = new IntersectionObserver((entries) => {
+    entries.forEach(e => {
+      if (e.isIntersecting) {
+        e.target.style.opacity = '1';
+        e.target.style.transform = 'translateY(0)';
+      }
+    });
+  }, { threshold: 0.1 });
+
+  document.querySelectorAll('.feature-card, .stat, .workflow-step, .download-card').forEach(el => {
+    el.style.opacity = '0';
+    el.style.transform = 'translateY(20px)';
+    el.style.transition = 'opacity 0.6s ease, transform 0.6s ease';
+    observer.observe(el);
+  });
+</script>
+
+</body>
+</html>
