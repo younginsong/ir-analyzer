@@ -757,50 +757,61 @@
   </div>
 </section>
 
-<!-- STATS -->
-<div style="max-width:700px;margin:0 auto;padding:0 24px;">
-  <div class="stats">
-    <div class="stat">
-      <span class="stat-num">4</span>
-      <span class="stat-label">Peak shapes</span>
-    </div>
-    <div class="stat">
-      <span class="stat-num">R²</span>
-      <span class="stat-label">Live fit quality</span>
-    </div>
-    <div class="stat">
-      <span class="stat-num">∞</span>
-      <span class="stat-label">Batch files</span>
-    </div>
-    <div class="stat">
-      <span class="stat-num">0</span>
-      <span class="stat-label">Setup required</span>
-    </div>
-  </div>
-</div>
-
 <!-- FEATURES -->
 <section class="section" id="features">
   <p class="section-label">Features</p>
-  <h2 class="section-title">Everything you need,<br><em>nothing you don't.</em></h2>
+  <h2 class="section-title">Built for<br><em>in situ IR analysis.</em></h2>
 
   <div class="features-grid">
     <div class="feature-card">
       <span class="feature-icon">🎯</span>
-      <div class="feature-title">Auto Peak Detection</div>
+      <div class="feature-title">Automatic 4-Peak Detection</div>
       <div class="feature-desc">
-        Second-derivative analysis automatically finds hidden peaks in broad,
-        overlapping OH stretching bands — even when they're not visible to the eye.
+        Second-derivative analysis automatically locates all four sub-peaks
+        in broad, overlapping OH stretching bands — no manual guessing required.
       </div>
       <span class="feature-tag">2nd derivative</span>
+    </div>
+
+    <div class="feature-card">
+      <span class="feature-icon">📊</span>
+      <div class="feature-title">Population Analysis + Stark Tuning</div>
+      <div class="feature-desc">
+        View peak positions, areas, and area% across the full potential range
+        simultaneously. Calculate population shifts and Stark tuning slopes
+        (cm⁻¹/V) directly from deconvolution — no post-processing needed.
+      </div>
+      <span class="feature-tag">stark tuning · population</span>
+    </div>
+
+    <div class="feature-card">
+      <span class="feature-icon">🔬</span>
+      <div class="feature-title">OH and CO Analysis</div>
+      <div class="feature-desc">
+        Supports both OH stretching region and CO stretching region (CO<sub>L</sub>, CO<sub>B</sub>).
+        Switch between analysis modes to cover the full in situ IR workflow
+        in a single tool.
+      </div>
+      <span class="feature-tag">OH · CO_L · CO_B</span>
+    </div>
+
+    <div class="feature-card">
+      <span class="feature-icon">📂</span>
+      <div class="feature-title">Batch Processing</div>
+      <div class="feature-desc">
+        Load an entire folder of potential-dependent spectra at once.
+        Apply shared fitting parameters across all files and export
+        every result to a single Excel workbook in one click.
+      </div>
+      <span class="feature-tag">xlsx export</span>
     </div>
 
     <div class="feature-card">
       <span class="feature-icon">🖱️</span>
       <div class="feature-title">Interactive Peak Editing</div>
       <div class="feature-desc">
-        Click on the plot to add peaks. Drag vertical markers to adjust center position.
-        Right-click to fine-tune FWHM. No command line, no scripting.
+        Click to add peaks, drag markers to adjust center positions,
+        right-click to fine-tune FWHM. Full control without any scripting.
       </div>
       <span class="feature-tag">drag & drop</span>
     </div>
@@ -809,40 +820,10 @@
       <span class="feature-icon">📐</span>
       <div class="feature-title">Gaussian · Lorentzian · Voigt</div>
       <div class="feature-desc">
-        Choose your peak shape per experiment. lmfit-powered optimization
-        with full error estimation for each fitted parameter.
+        Choose peak shape per experiment. lmfit-powered optimization
+        with live R² display and full error estimation for every fitted parameter.
       </div>
       <span class="feature-tag">lmfit engine</span>
-    </div>
-
-    <div class="feature-card">
-      <span class="feature-icon">⚡</span>
-      <div class="feature-title">Stark Tuning Analysis</div>
-      <div class="feature-desc">
-        Load in situ potential-dependent spectra and instantly get
-        linear regression slopes (cm⁻¹/V) and R² for each peak — P1 through P4.
-      </div>
-      <span class="feature-tag">linear regression</span>
-    </div>
-
-    <div class="feature-card">
-      <span class="feature-icon">📂</span>
-      <div class="feature-title">Batch Processing</div>
-      <div class="feature-desc">
-        Drag a whole folder of CSV files onto the sidebar. One-click batch fitting
-        with shared initial parameters. Export all results to Excel in seconds.
-      </div>
-      <span class="feature-tag">xlsx export</span>
-    </div>
-
-    <div class="feature-card">
-      <span class="feature-icon">🎨</span>
-      <div class="feature-title">Dark-first Interface</div>
-      <div class="feature-desc">
-        Designed for long analysis sessions. Multi-spectrum sidebar, live
-        residual display, and color-coded peaks that are actually readable.
-      </div>
-      <span class="feature-tag">pyqtgraph</span>
     </div>
   </div>
 </section>
@@ -946,17 +927,8 @@
         <span class="p-icon">🪟</span>
         <div class="p-info">
           <span class="p-name">Windows</span>
-          <span class="p-status status-soon">
-            <span class="status-dot dot-soon"></span>Planned
-          </span>
-        </div>
-      </div>
-      <div class="platform-card">
-        <span class="p-icon">🐧</span>
-        <div class="p-info">
-          <span class="p-name">Linux</span>
-          <span class="p-status status-soon">
-            <span class="status-dot dot-soon"></span>Planned
+          <span class="p-status status-dev">
+            <span class="status-dot dot-dev"></span>In development
           </span>
         </div>
       </div>
